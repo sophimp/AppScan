@@ -70,7 +70,7 @@ def logging_fun(file: str):
     # 创建日志的记录等级
     logging.basicConfig(level=logging.INFO)
     # 创建日志记录器，指明日志保存的路径，每个日志文件的最大值，保存的日志文件个数上限
-    log_handle = RotatingFileHandler(file, maxBytes=1024 * 1024 * 5, backupCount=1)
+    log_handle = RotatingFileHandler(file, maxBytes=1024 * 1024 * 5, backupCount=1, encoding="utf-8")
     # 创建日志记录的格式
     formatter = logging.Formatter(
         "format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s-%(funcName)s',"

@@ -89,12 +89,15 @@ function fridaHelpWatch (mainWindow) {
       stopPort: 60000,
     });
 
-    fridaHelpProcess = spawn(fridaPath, ["-p", port, "-f", fridalogfile]);
+    fridaHelpProcess = spawn(fridaPath, ["-p", port, "-f", fridalogfile], {
+      stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, PYTHONIOENCODING: "utf-8" },
+    });
     // TODO 测试本地
     try {
       await new Promise((resolve, reject) =>
         fridaHelpProcess.stderr.on("data", (data) => {
-          log(data.toString()); // 调用log日志存储函数
+          log(data.toString("utf8")); // 调用log日志存储函数
           if (`${data}`.indexOf("Uvicorn running on") > 0) {
             resolve();
           }

@@ -2,6 +2,9 @@
 .thumbs.db
 node_modules
 
+# Helper build output (auto-generated)
+frida-helper/
+
 # Quasar core related directories
 .quasar
 /dist

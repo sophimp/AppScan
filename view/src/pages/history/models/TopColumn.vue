@@ -33,7 +33,7 @@
       检测时间：{{ moment(createTime).format("YYYY-MM-DD HH:mm:ss") }}
 
       <template v-slot:action>
-        <q-btn flat label="结果导出" @click="downLoad" />
+        <q-btn flat label="导出全部打标结果" @click="downLoad" />
 
         <q-btn
           v-if="type == 'major'"

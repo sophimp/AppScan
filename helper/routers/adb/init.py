@@ -2,6 +2,7 @@ import os
 import time
 import platform
 import subprocess
+import logging
 from copy import deepcopy
 from fastapi import APIRouter
 
@@ -13,6 +14,8 @@ from internal.response.model import (
     USB_UNAUTHORIZED,
     ROOT_CLOSED,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/adb/init")
 
@@ -38,6 +41,7 @@ if platform.system().lower() == "darwin":
     )  # 默认mac环境
 frida_server_arm = "hluda-server-arm64"
 frida_server_x86 = "hluda-server-x86"
+frida_server_x86_64 = "hluda-server-x86_64"
 # 根据手机架构选择 frida-server, arm和x86
 # 兼容模拟器
 detecting_phone_architecture_cmd = [adb_path, "shell", "su -c 'getprop ro.product.cpu.abi'"]
@@ -95,6 +99,7 @@ def generation_cmd():
     global detecting_phone_architecture_cmd
     global frida_server_arm
     global frida_server_x86
+    global frida_server_x86_64
     adb_path = (
         os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
         + os.sep
@@ -117,6 +122,7 @@ def generation_cmd():
         )  # 默认mac环境
     frida_server_arm = "hluda-server-arm64"
     frida_server_x86 = "hluda-server-x86"
+    frida_server_x86_64 = "hluda-server-x86_64"
     # 根据手机架构选择 frida-server, arm和x86
     # 兼容模拟器
     detecting_phone_architecture_cmd = [adb_path, "shell", "su -c 'getprop ro.product.cpu.abi'"]
@@ -160,6 +166,8 @@ def detecting_phone_architecture():
     outdata = result[0].decode("utf-8")
     if "arm" in outdata:
         frida_server = frida_server_arm
+    elif "x86_64" in outdata:
+        frida_server = frida_server_x86_64
     elif "x86" in outdata:
         frida_server = frida_server_x86
     else:
@@ -173,35 +181,52 @@ async def init():
         # https://github.com/zhengjim/camille/pull/32/commits/1be9236d7b0d8d4369ba0e0e84df5c660dc35c87
         # 重启一下 adb, 防止 adb 偶尔抽风
         # 停止 adb
+        logger.info("[init] 步骤1: 停止 ADB...")
         subprocess.call(stop_adb_cmd)
         # 启动adb
+        logger.info("[init] 步骤2: 启动 ADB...")
         subprocess.call(start_adb_cmd)
         time.sleep(5)
         # https://github.com/zhengjim/camille/pull/32/commits/e3084d92ba0db4206409246d5e8145c9b5820640
+        logger.info("[init] 步骤3: 列出设备...")
         subprocess.call(devices_cmd)
         # 关闭SELinux
+        logger.info("[init] 步骤4: 关闭 SELinux...")
         subprocess.call(colse_SELinux_cmd)
         # https://github.com/frida/frida/issues/1788 适配ROM
+        logger.info("[init] 步骤5: 关闭 USAP...")
         subprocess.call(close_usap_cmd)
         # kill 可能残留的进程
+        logger.info("[init] 步骤6: 杀掉残留 hluda 进程...")
         subprocess.call(kill_cmd)
         time.sleep(2)
         # 获取手机架构
+        logger.info("[init] 步骤7: 检测手机架构...")
         detecting_phone_architecture()
+        logger.info("[init] 手机架构检测结果: frida_server=%s", frida_server)
         generation_cmd()
+        logger.info("[init] frida_path=%s", frida_path)
         # 清理数据
+        logger.info("[init] 步骤8: 清理 /data/local/tmp/...")
         subprocess.call(clean_cmd)
         # 推送 frida-server 到设备
-        subprocess.call(push_cmd)
+        logger.info("[init] 步骤9: 推送 frida-server 到设备...")
+        result = subprocess.call(push_cmd)
+        logger.info("[init] push 结果: %d", result)
         time.sleep(3)
         # 移动文件
+        logger.info("[init] 步骤10: 移动文件到 /data/local/tmp/...")
         subprocess.call(mv_cmd)
         # 设置权限
+        logger.info("[init] 步骤11: 设置权限 chmod 777...")
         subprocess.call(chmod_cmd)
         # 启动
+        logger.info("[init] 步骤12: 启动 frida-server...")
         pid = subprocess.Popen(run_cmd)
         time.sleep(5)
+        logger.info("[init] 步骤13: 关闭启动子进程...")
         pid.kill()
+        logger.info("[init] 初始化完成!")
     except Exception as e:
         res = deepcopy(FAILED_PRECONDITION)
         res.description = "初始化错误: " + str(e)

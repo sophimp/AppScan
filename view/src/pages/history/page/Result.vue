@@ -238,26 +238,46 @@ export default defineComponent({
       async downLoad() {
         let marks = await getRiskData(recordIds);
         let data = [];
+        let passCount = 0;
+        let failCount = 0;
         for (let index = 0; index < marks.length; index++) {
           const mark = marks[index];
           let riskLevel = "";
           switch (mark.riskLevel) {
             case 0:
               riskLevel = "低风险";
+              break;
             case 1:
               riskLevel = "中风险";
+              break;
             case 2:
               riskLevel = "高风险";
+              break;
+          }
+          let checkResult = "待检测";
+          if (mark.option === 0) {
+            checkResult = "不通过";
+            failCount++;
+          } else if (mark.option === 1) {
+            checkResult = "通过";
+            passCount++;
           }
           data.push({
             序号: index + 1,
             检测项: mark.project,
             评估标准: mark.standard,
             风险等级: riskLevel,
+            检测结果: checkResult,
             整改建议: mark.suggest,
           });
         }
-        exportJson2Excel(data, "风险列表.xlsx", "风险");
+        // 添加汇总行
+        data.push({});
+        data.push({ 序号: "", 检测项: "总检测项数", 评估标准: marks.length, 风险等级: "", 检测结果: "", 整改建议: "" });
+        data.push({ 序号: "", 检测项: "通过数", 评估标准: passCount, 风险等级: "", 检测结果: "", 整改建议: "" });
+        data.push({ 序号: "", 检测项: "不通过数", 评估标准: failCount, 风险等级: "", 检测结果: "", 整改建议: "" });
+        data.push({ 序号: "", 检测项: "待检测数", 评估标准: marks.length - passCount - failCount, 风险等级: "", 检测结果: "", 整改建议: "" });
+        exportJson2Excel(data, "合规检测报告.xlsx", "检测结果");
       },
     };
   },

@@ -83,7 +83,7 @@
       <template v-slot:body-cell-icon="props">
         <q-td :props="props">
           <q-avatar square size="40px">
-            <img :src="props.row.icon" />
+            <img :src="getSafeIcon(props.row.icon)" />
           </q-avatar>
         </q-td>
       </template>
@@ -191,6 +191,14 @@ export default defineComponent({
 
     const appInfoStore = useAppInfoStore();
 
+    // 安全获取图标，避免非法字符导致 devServer 报错
+    function getSafeIcon(icon) {
+      if (icon && typeof icon === "string" && icon.startsWith("data:image/")) {
+        return icon;
+      }
+      return "";
+    }
+
     // 用作初始化时以及重新渲染组件时获取app列表
     function getInitAppList() {
       // 初始化完成，
@@ -231,6 +239,7 @@ export default defineComponent({
       appInfoStore,
       checkAppInfo,
       getInitAppList,
+      getSafeIcon,
       errorSubmitDialogRef,
       async connectPhone() {
         $q.loading.show({

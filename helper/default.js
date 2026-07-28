@@ -724,69 +724,34 @@ function return_zero(args) {
     return 0;
 }
 
+function matchWildcard(str, pattern) {
+    var regex = "^" + pattern.replace(/\*/g, ".*") + "$";
+    return new RegExp(regex).test(str);
+}
+
 function initializeGlobals() {
-    var resolver = new ApiResolver("module");
-    var exps = [
-        [
-            Process.platform == "darwin" ? "*libboringssl*" : "*libssl*",
-            [
-                "SSL_read",
-                "SSL_write",
-                "SSL_get_fd",
-                "SSL_get_session",
-                "SSL_SESSION_get_id",
-            ],
-        ], // for ios and Android
-        [
-            Process.platform == "darwin" ? "*libsystem*" : "*libc*",
-            ["getpeername", "getsockname", "ntohs", "ntohl"],
-        ],
+    var names = [
+        ["SSL_read", "SSL_read"],
+        ["SSL_write", "SSL_write"],
+        ["SSL_get_fd", "SSL_get_fd"],
+        ["SSL_get_session", "SSL_get_session"],
+        ["SSL_SESSION_get_id", "SSL_SESSION_get_id"],
+        ["getpeername", "getpeername"],
+        ["getsockname", "getsockname"],
+        ["ntohs", "ntohs"],
+        ["ntohl", "ntohl"],
     ];
-    // console.log(exps)
-    for (var i = 0; i < exps.length; i++) {
-        var lib = exps[i][0];
-        var names = exps[i][1];
-        for (var j = 0; j < names.length; j++) {
-            var name = names[j];
-            // console.log("exports:" + lib + "!" + name)
-            var matches = resolver.enumerateMatchesSync(
-                "exports:" + lib + "!" + name
-            );
-            if (matches.length == 0) {
-                if (name == "SSL_get_fd") {
-                    addresses["SSL_get_fd"] = 0;
-                    continue;
-                }
-                throw "Could not find " + lib + "!" + name;
-            } else if (matches.length != 1) {
-                // Sometimes Frida returns duplicates.
-                var address = 0;
-                var s = "";
-                var duplicates_only = true;
-                for (var k = 0; k < matches.length; k++) {
-                    if (s.length != 0) {
-                        s += ", ";
-                    }
-                    s += matches[k].name + "@" + matches[k].address;
-                    if (address == 0) {
-                        address = matches[k].address;
-                    } else if (!address.equals(matches[k].address)) {
-                        duplicates_only = false;
-                    }
-                }
-                if (!duplicates_only) {
-                    throw (
-                        "More than one match found for " +
-                        lib +
-                        "!" +
-                        name +
-                        ": " +
-                        s
-                    );
-                }
+
+    for (var i = 0; i < names.length; i++) {
+        var addr = DebugSymbol.getFunctionByName(names[i][0]);
+        if (addr === null || addr === undefined) {
+            if (names[i][1] == "SSL_get_fd") {
+                addresses["SSL_get_fd"] = 0;
+                continue;
             }
-            addresses[name] = matches[0].address;
+            throw "Could not find " + names[i][0];
         }
+        addresses[names[i][1]] = addr;
     }
     if (addresses["SSL_get_fd"] == 0) {
         SSL_get_fd = return_zero;

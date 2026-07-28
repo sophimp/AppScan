@@ -37,13 +37,17 @@ export async function getRiskData(recordIds) {
   }
 
   for (let index = 0; index < list.length; index++) {
-    if (resultMap[list[index].id] && list[index].option == 0) {
-      list[index].options = [
-        { label: list[index].okText, value: 1 },
-        { label: list[index].failText, value: 0 },
+    const item = list[index];
+    if (resultMap[item.id]) {
+      // 导出所有已打标的项，不只导出不通过的
+      item.option = resultMap[item.id].option;
+      item.suggest = resultMap[item.id].suggest || "";
+      item.options = [
+        { label: item.okText, value: 1 },
+        { label: item.failText, value: 0 },
         { label: "待检测", value: -1 },
       ];
-      data.push(list[index]);
+      data.push(item);
     }
   }
   return data;
