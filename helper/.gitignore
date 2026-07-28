@@ -36,6 +36,7 @@ ENV/
 
 *.pcap
 *.out
+*.lock
 
 # static
 static/gadget-android-arm64.so
